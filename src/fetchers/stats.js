@@ -162,6 +162,47 @@ const statsFetcher = async ({
   return stats;
 };
 
+/** Fetch commits in an organisation.
+ *
+ * @param {object} variables Fetcher variables.
+ * @param {string} token GitHub token.
+ * @returns {Promise<import('axios').AxiosResponse>} Axios response.
+ * 
+ * @see https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#list-organizations-for-the-authenticated-user
+ */
+const fetchCommitsInOrganisation = (variables, token) => {
+  return axios({
+    method: "get",
+    url: `https://api.github.com/search/commits?q=org:${variables.org}%20author:${variables.login}`,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/vnd.github.cloak-preview",
+      Authorization: `token ${token}`,
+    },
+  });
+}
+
+/**
+ * Fetch organizations for the user.
+ *
+ * @param {object} variables Fetcher variables.
+ * @param {string} token GitHub token.
+ * @returns {Promise<import('axios').AxiosResponse>} Axios response.
+ * 
+ * @see https://developer.github.com/v3/search/#search-commits
+ */
+const fetchUserOrganisations = (variables, token) => {
+  return axios({
+    method: "get",
+    url: `https://api.github.com/user/orgs`,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/vnd.github.cloak-preview",
+      Authorization: `token ${token}`,
+    },
+  })
+}
+
 /**
  * Fetch total commits using the REST API.
  *
@@ -206,13 +247,33 @@ const totalCommitsFetcher = async (username) => {
     throw new Error(err);
   }
 
-  const totalCount = res.data.total_count;
+  let totalCount = res.data.total_count;
   if (!totalCount || isNaN(totalCount)) {
     throw new CustomError(
       "Could not fetch total commits.",
       CustomError.GITHUB_REST_API_ERROR,
     );
   }
+
+  // Get user's github organisations
+  try {
+    res = await retryer(fetchUserOrganisations, {});
+  } catch (err) {
+    logger.log(err);
+    throw new Error(err);
+  }
+  const orgs = res.data.map(({ login }) => login);
+
+  // Get commit count for each organisation
+  let results;
+  try {
+    results = await Promise.all(orgs.map(org => retryer(fetchCommitsInOrganisation, { login: username, org })));
+  } catch (err) {
+    logger.log(err);
+    throw new Error(err);
+  }
+  totalCount += results.reduce((prev, curr) => prev + curr.data.total_count || 0, 0);
+
   return totalCount;
 };
 

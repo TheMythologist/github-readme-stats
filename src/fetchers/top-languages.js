@@ -2,7 +2,7 @@
 
 import { retryer } from "../common/retryer.js";
 import { logger } from "../common/log.js";
-import { excludeRepositories } from "../common/envs.js";
+import { excludeRepositories, excludeOrganizations, excludeOrganizationRepositories } from "../common/envs.js";
 import { CustomError, MissingParamError } from "../common/error.js";
 import { wrapTextMultiline } from "../common/fmt.js";
 import { request } from "../common/http.js";
@@ -120,7 +120,7 @@ const fetchTopLanguages = async (
 
   let repoNodes = res.data.data.user.repositories.nodes;
   // TODO: Filter out organisations and org-repositories to exclude
-  let orgNodes = res.data.data.user.organizations.nodes;
+  let orgNodes = res.data.data.user.organizations.nodes.filter(org => !excludeOrganizations.includes(org.name));
   /** @type {Record<string, boolean>} */
   let repoToHide = {};
   const allExcludedRepos = [...exclude_repo, ...excludeRepositories];
@@ -140,7 +140,7 @@ const fetchTopLanguages = async (
 
   // TODO: Improve the efficiency of this function using reduce
   orgNodes.forEach(orgNode => {
-    repoNodes = repoNodes.concat(orgNode.repositories.nodes)
+    repoNodes = repoNodes.concat(orgNode.repositories.nodes.filter(repo => !excludeOrganizationRepositories.includes(`${orgNode.name}/${repo.name}`)))
   });
 
   let repoCount = 0;

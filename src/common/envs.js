@@ -12,4 +12,12 @@ const excludeRepositories = process.env.EXCLUDE_REPO
   ? process.env.EXCLUDE_REPO.split(",")
   : [];
 
-export { whitelist, gistWhitelist, excludeRepositories };
+const excludeOrganizations = process.env.EXCLUDE_ORG
+  ? process.env.EXCLUDE_ORG.split(",")
+  : [];
+
+const excludeOrganizationRepositories = process.env.EXCLUDE_ORG_REPO
+  ? process.env.EXCLUDE_ORG_REPO.split(",")
+  : [];
+
+export { whitelist, gistWhitelist, excludeRepositories, excludeOrganizations, excludeOrganizationRepositories };

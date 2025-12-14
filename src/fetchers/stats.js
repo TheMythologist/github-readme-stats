@@ -6,7 +6,7 @@ import githubUsernameRegex from "github-username-regex";
 import { calculateRank } from "../calculateRank.js";
 import { retryer } from "../common/retryer.js";
 import { logger } from "../common/log.js";
-import { excludeRepositories } from "../common/envs.js";
+import { excludeRepositories, excludeOrganizations, excludeOrganizationRepositories } from "../common/envs.js";
 import { CustomError, MissingParamError } from "../common/error.js";
 import { wrapTextMultiline } from "../common/fmt.js";
 import { request } from "../common/http.js";
@@ -267,7 +267,7 @@ const totalCommitsFetcher = async (username) => {
   // Get commit count for each organisation
   let results;
   try {
-    results = await Promise.all(orgs.map(org => retryer(fetchCommitsInOrganisation, { login: username, org })));
+    results = await Promise.all(orgs.filter(org => !excludeOrganizations.includes(org)).map(org => retryer(fetchCommitsInOrganisation, { login: username, org })));
   } catch (err) {
     logger.log(err);
     throw new Error(err);

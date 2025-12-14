@@ -16,6 +16,8 @@ import { parseOwnerAffiliations } from "../common/ownerAffiliations.js";
  * @returns {Promise<import("axios").AxiosResponse>} Languages fetcher response.
  */
 const fetcher = (variables, token) => {
+  // TODO: This request fails for individuals with huge organisations
+  // It currently fails with a generic 502 NGINX error
   return request(
     {
       query: `
@@ -31,6 +33,27 @@ const fetcher = (variables, token) => {
                   node {
                     color
                     name
+                  }
+                }
+              }
+            }
+          }
+
+          organizations(first: 100) {
+            nodes {
+              name
+              # do not fetch forks
+              repositories(ownerAffiliations: $ownerAffiliations, isFork: false, first: 100) {
+                nodes {
+                  name
+                  languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
+                    edges {
+                      size
+                      node {
+                        color
+                        name
+                      }
+                    }
                   }
                 }
               }
@@ -96,6 +119,8 @@ const fetchTopLanguages = async (
   }
 
   let repoNodes = res.data.data.user.repositories.nodes;
+  // TODO: Filter out organisations and org-repositories to exclude
+  let orgNodes = res.data.data.user.organizations.nodes;
   /** @type {Record<string, boolean>} */
   let repoToHide = {};
   const allExcludedRepos = [...exclude_repo, ...excludeRepositories];
@@ -112,6 +137,11 @@ const fetchTopLanguages = async (
   repoNodes = repoNodes
     .sort((a, b) => b.size - a.size)
     .filter((name) => !repoToHide[name.name]);
+
+  // TODO: Improve the efficiency of this function using reduce
+  orgNodes.forEach(orgNode => {
+    repoNodes = repoNodes.concat(orgNode.repositories.nodes)
+  });
 
   let repoCount = 0;
 

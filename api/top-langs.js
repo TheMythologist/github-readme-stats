@@ -39,6 +39,7 @@ export default async (req, res) => {
     locale,
     border_radius,
     border_color,
+    role,
     disable_animations,
     hide_progress,
     stats_format,
@@ -123,6 +124,7 @@ export default async (req, res) => {
       parseArray(exclude_repo),
       size_weight,
       count_weight,
+      parseArray(role),
     );
     const cacheSeconds = resolveCacheSeconds({
       requested: parseInt(cache_seconds, 10),

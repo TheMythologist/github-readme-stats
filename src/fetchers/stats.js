@@ -10,12 +10,13 @@ import { excludeRepositories } from "../common/envs.js";
 import { CustomError, MissingParamError } from "../common/error.js";
 import { wrapTextMultiline } from "../common/fmt.js";
 import { request } from "../common/http.js";
+import { parseOwnerAffiliations } from "../common/ownerAffiliations.js";
 
 dotenv.config();
 
 // GraphQL queries.
 const GRAPHQL_REPOS_FIELD = `
-  repositories(first: 100, ownerAffiliations: OWNER, orderBy: {direction: DESC, field: STARGAZERS}, after: $after) {
+  repositories(first: 100, ownerAffiliations: $ownerAffiliations, orderBy: {direction: DESC, field: STARGAZERS}, after: $after) {
     totalCount
     nodes {
       name
@@ -31,15 +32,15 @@ const GRAPHQL_REPOS_FIELD = `
 `;
 
 const GRAPHQL_REPOS_QUERY = `
-  query userInfo($login: String!, $after: String) {
-    user(login: $login) {
+  query userInfo($login: String!, $after: String, $ownerAffiliations: [RepositoryAffiliation]) {
+    user(login: $login, ownerAffiliations: $ownerAffiliations) {
       ${GRAPHQL_REPOS_FIELD}
     }
   }
 `;
 
 const GRAPHQL_STATS_QUERY = `
-  query userInfo($login: String!, $after: String, $includeMergedPullRequests: Boolean!, $includeDiscussions: Boolean!, $includeDiscussionsAnswers: Boolean!, $startTime: DateTime = null) {
+  query userInfo($login: String!, $after: String, $includeMergedPullRequests: Boolean!, $includeDiscussions: Boolean!, $includeDiscussionsAnswers: Boolean!, $startTime: DateTime = null, $ownerAffiliations: [RepositoryAffiliation]) {
     user(login: $login) {
       name
       login
@@ -107,6 +108,7 @@ const fetcher = (variables, token) => {
  * @param {boolean} variables.includeDiscussions Include discussions.
  * @param {boolean} variables.includeDiscussionsAnswers Include discussions answers.
  * @param {string|undefined} variables.startTime Time to start the count of total commits.
+ * @param {string[]} variables.ownerAffiliations The owner affiliations to filter by. Default: OWNER.
  * @returns {Promise<import('axios').AxiosResponse>} Axios response.
  *
  * @description This function supports multi-page fetching if the 'FETCH_MULTI_PAGE_STARS' environment variable is set to true.
@@ -117,6 +119,7 @@ const statsFetcher = async ({
   includeDiscussions,
   includeDiscussionsAnswers,
   startTime,
+  ownerAffiliations,
 }) => {
   let stats;
   let hasNextPage = true;
@@ -130,6 +133,7 @@ const statsFetcher = async ({
       includeDiscussions,
       includeDiscussionsAnswers,
       startTime,
+      ownerAffiliations,
     };
     let res = await retryer(fetcher, variables);
     if (res.data.errors) {
@@ -222,6 +226,7 @@ const totalCommitsFetcher = async (username) => {
  * @param {boolean} include_discussions Include discussions.
  * @param {boolean} include_discussions_answers Include discussions answers.
  * @param {number|undefined} commits_year Year to count total commits
+ * @param {string[]} ownerAffiliations Owner affiliations. Default: OWNER.
  * @returns {Promise<import("./types").StatsData>} Stats data.
  */
 const fetchStats = async (
@@ -232,6 +237,7 @@ const fetchStats = async (
   include_discussions = false,
   include_discussions_answers = false,
   commits_year,
+  ownerAffiliations = ["OWNER"],
 ) => {
   if (!username) {
     throw new MissingParamError(["username"]);
@@ -251,6 +257,7 @@ const fetchStats = async (
     contributedTo: 0,
     rank: { level: "C", percentile: 100 },
   };
+  ownerAffiliations = parseOwnerAffiliations(ownerAffiliations);
 
   let res = await statsFetcher({
     username,
@@ -258,6 +265,7 @@ const fetchStats = async (
     includeDiscussions: include_discussions,
     includeDiscussionsAnswers: include_discussions_answers,
     startTime: commits_year ? `${commits_year}-01-01T00:00:00Z` : undefined,
+    ownerAffiliations,
   });
 
   // Catch GraphQL errors.

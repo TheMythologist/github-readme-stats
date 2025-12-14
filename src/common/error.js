@@ -1,9 +1,12 @@
 // @ts-check
 
+import { OWNER_AFFILIATIONS } from "./ownerAffiliations.js";
+
 /**
  * @type {string} A general message to ask user to try again later.
  */
 const TRY_AGAIN_LATER = "Please try again later";
+
 
 /**
  * @type {Object<string, string>} A map of error types to secondary error messages.
@@ -17,6 +20,9 @@ const SECONDARY_ERROR_MESSAGES = {
   GRAPHQL_ERROR: TRY_AGAIN_LATER,
   GITHUB_REST_API_ERROR: TRY_AGAIN_LATER,
   WAKATIME_USER_NOT_FOUND: "Make sure you have a public WakaTime profile",
+  INVALID_AFFILIATION: `Invalid owner affiliations. Valid values are: ${OWNER_AFFILIATIONS.join(
+    ", ",
+  )}`,
 };
 
 /**
@@ -41,6 +47,7 @@ class CustomError extends Error {
   static GRAPHQL_ERROR = "GRAPHQL_ERROR";
   static GITHUB_REST_API_ERROR = "GITHUB_REST_API_ERROR";
   static WAKATIME_ERROR = "WAKATIME_ERROR";
+  static INVALID_AFFILIATION = "INVALID_AFFILIATION";
 }
 
 /**

@@ -46,6 +46,7 @@ export default async (req, res) => {
     number_format,
     number_precision,
     border_color,
+    role,
     rank_icon,
     show,
   } = req.query;
@@ -94,6 +95,7 @@ export default async (req, res) => {
       showStats.includes("discussions_started"),
       showStats.includes("discussions_answered"),
       parseInt(commits_year, 10),
+      parseArray(role),
     );
     const cacheSeconds = resolveCacheSeconds({
       requested: parseInt(cache_seconds, 10),
